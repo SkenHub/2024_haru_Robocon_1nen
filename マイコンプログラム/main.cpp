@@ -1,3 +1,12 @@
+/**
+  ******************************************************************************
+  * @file    main.c
+  * @author  Ac6
+  * @version V1.0
+  * @date    01-December-2013
+  * @brief   Default main function.
+  ******************************************************************************
+*/
 #include <cmath>
 #include "stm32f4xx.h"
 #include "stm32f4xx_nucleo.h"
@@ -52,7 +61,7 @@ float M4_gain[4] = {10.0,0,0,20};
 CanData received_raw;
 uint8_t received_data[8];
 RcPwm servo[8];
-Gpio limit[2];
+Gpio limit[4];
 
 void main_interrupt(void) {
 	for (int i = 0; i < 8; ++i) {
@@ -65,9 +74,15 @@ void main_interrupt(void) {
 	module_receiver[SENSOR_0].get_enc(&x, &y, &theta);
 	module_receiver[SENSOR_1].get_enc(&x, &y, &theta);
 }
+
 int main(void){
 	sken_system.init();
 	sken_module_init();
+
+	sken_system.init();
+	sken_system.startCanCommunicate(A12, A11, CAN_1);
+	sken_system.addCanRceiveInterruptFunc(CAN_1, &received_raw);
+	sken_system.addTimerInterruptFunc(main_interrupt, 0, 1);
 
 	uart.init(A9,A10,SERIAL1,115200);
 
@@ -83,12 +98,14 @@ int main(void){
 	servo[0].init(B6, TIMER4, CH1);
 	servo[1].init(B7, TIMER4, CH2);
 	encoder.init(A0,A1,TIMER5);
-	motor3.init(Apin,A6,TIMER1,CH1);
 	motor3.init(Apin,A8,TIMER1,CH1);
     motor2.init(Apin,A11,TIMER1,CH1);
 	motor1.init(Apin,A13,TIMER1,CH1);
+	motor3.init(Bpin,A8,TIMER1,CH1);
+	motor2.init(Bpin,A11,TIMER1,CH1);
+	motor1.init(Bpin,A13,TIMER1,CH1);
 
-	  mdd.init(C10, C11, SERIAL3);  //MDDãƒ”ãƒ³è¨­å®š
+	  mdd.init(C10, C11, SERIAL3);  //MDDƒsƒ“Ý’è
 	  mdd.tcp(MOTOR_COMMAND_MODE_SELECT, COMMAND_MODE, 10, 2000);
 	  mdd.tcp(ENCODER_RESOLUTION_CONFIG, ENCODER_CONFIG, 10, 2000);
 	  mdd.tcp(ROBOT_DIAMETER_CONFIG, DIAMETER_CONFIG, 10, 2000);
@@ -96,10 +113,8 @@ int main(void){
 	  mdd.tcp(M2_PID_GAIN_CONFIG, M2_gain, 10, 2000);
 	  mdd.tcp(M3_PID_GAIN_CONFIG, M3_gain, 10, 2000);
 	  mdd.tcp(M4_PID_GAIN_CONFIG, M4_gain, 10, 2000);
-
-	mdd.init(A13,A12,SERIAL2);
-	mdd.tcp (OMNI4_MODE,M1_gain,10,2000);
-	rc_pwm.init(A5,TIMER2,CH1);
+	  mdd.tcp(OMNI4_MODE,M1_gain,10,2000);
+	  rc_pwm.init(A5,TIMER2,CH1);
 
 	uart.startDmaRead(data,6);
 	while(true) {
@@ -120,14 +135,10 @@ int main(void){
 	}
 }
 void box(void){
-	sken_system.init();
-	sken_system.startCanCommunicate(A12, A11, CAN_1);
-	sken_system.addCanRceiveInterruptFunc(CAN_1, &received_raw);
-	sken_system.addTimerInterruptFunc(main_interrupt, 0, 1);
 
 	while(true) {
 			if(Square){
-				motor1.write(100);
+				motor1.write(50);
 			}
 			if(!limit[1].read()){
 					motor1.write(0);
@@ -141,7 +152,7 @@ void corn(void)
     	encoder.interrupt(&encoder_data);
     	out = pid.control(100,encoder_data.deg,1);
     	if(Triangle){
-    		motor2.write(-100);
+    		motor2.write(-50);
     	}
     	if(!limit[3].read()){
     		motor2.write(0);
@@ -153,8 +164,8 @@ void borl(void){
 	while(true){
 		if(Up)
 		rc_pwm.turn(-90);
-		motor4.write(-100);
-		motor2.write(-100);
+		motor4.write(-50);
+		motor2.write(-50);
 		if(!limit[2].read()){
 			motor2.write(0);
 		}
@@ -162,14 +173,10 @@ void borl(void){
 }
 void boxes(void)
 {
-	sken_system.init();
-	sken_system.startCanCommunicate(A12, A11, CAN_1);
-	sken_system.addCanRceiveInterruptFunc(CAN_1, &received_raw);
-	sken_system.addTimerInterruptFunc(main_interrupt, 0, 1);
 
 	while(true) {
 			if(Square){
-				motor1.write(100);
+				motor1.write(50);
 			}
 			if(!limit[1].read()){
 					motor1.write(0);
@@ -178,15 +185,12 @@ void boxes(void)
 }
 void corns(void)
 {
-	sken_system.init();
-	sken_system.startCanCommunicate(A12, A11, CAN_1);
-	sken_system.addCanRceiveInterruptFunc(CAN_1, &received_raw);
-	sken_system.addTimerInterruptFunc(main_interrupt, 0, 1);
+
 	while(true){
     	encoder.interrupt(&encoder_data);
     	in = pid.control(100,encoder_data.deg,1);
     	if(Cross){
-    		motor2.write(-100);
+    		motor2.write(-50);
     		motor3.write(in);
     	}
     	if(!limit[2].read()){
@@ -198,8 +202,8 @@ void borls(void){
 	while(true){
 		if(Up)
 		rc_pwm.turn(-90);
-		motor4.write(-100);
-		motor2.write(-100);
+		motor4.write(-50);
+		motor2.write(-50);
 		if(!limit[3].read()){
 			motor2.write(0);
 		}
@@ -207,15 +211,11 @@ void borls(void){
 }
 void Cornya(void)
 {
-	sken_system.init();
-		sken_system.startCanCommunicate(A12, A11, CAN_1);
-		sken_system.addCanRceiveInterruptFunc(CAN_1, &received_raw);
-		sken_system.addTimerInterruptFunc(main_interrupt, 0, 1);
 		while(true){
 	    	encoder.interrupt(&encoder_data);
 	    	mama = pid.control(-100,encoder_data.deg,1);
 	    	if(R1){
-	    		motor2.write(-100);
+	    		motor2.write(-50);
 	    	}
 	    	if(!limit[3].read()){
 	    		motor2.write(0);
@@ -226,9 +226,9 @@ void Cornya(void)
 void borlya(void){
 	while(true){
 		if(L1)
-		motor2.write(-100);
+		motor2.write(-50);
 		rc_pwm.turn(90);
-		motor4.write(100);
+		motor4.write(50);
 		if(!limit[3].read()){
 				motor2.write(0);
 		}
