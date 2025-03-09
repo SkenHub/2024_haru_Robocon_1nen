@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>harurobo</title>
+    <style>
+        body {
+            background: rgb(0, 0, 0);
+            text-align: center;
+        }
+
+        .timer {
+            line-height: 0.9;
+            font-size: 60px;
+            font-weight: 900;
+        }
+
+        .time {
+            position: absolute;
+            background-color: rgb(20, 203, 173);
+            width: 315px;
+            height: 100px;
+            top: 20px;
+            left: 20px;
+            border-style: solid;
+            border-color: rgb(0, 0, 0);
+        }
+
+        .minute,
+        .second,
+        .milli {
+            position: absolute;
+            width: 35px;
+            height: 25px;
+            top: 50px;
+        }
+
+        .minute {
+            left: 30px;
+        }
+
+        .second {
+            left: 115px;
+        }
+
+        .milli {
+            left: 225px;
+        }
+
+        .timer-button {
+            position: absolute;
+            background-color: rgb(20, 203, 173);
+            width: 315px;
+            height: 50px;
+            border-style: solid;
+            border-color: rgb(0, 0, 0);
+            top: 122px;
+            left: 20px;
+            line-height: 1.1;
+            font-size: 50px;
+        }
+
+        .harurobo {
+            position: absolute;
+            color: rgb(0, 0, 0);
+            background-color: rgb(255, 255, 255);
+            height: 300px;
+            width: 300px;
+            top: 10px;
+            left: 340px;
+            line-height: 3.5.;
+            font-size: 20px;
+            font-weight: 1000;
+            border-style: solid;
+            border-color: rgb(0, 0, 0);
+        }
+
+        .fight {
+            position: absolute;
+            color: rgb(255, 255, 255);
+            background-color: rgb(255, 0, 0);
+            top: 200px;
+            font-size: 45px;
+            left: 20px;
+            font-weight: 1000;
+        }
+    </style>
+</head>
+
+<body id="all">
+    <div class="harurobo" id="harurobo">
+        ①カゴ回収　　　　　　　　　　②カゴ置く　　　　　　　　　　③コーン全回収　　　　　　　　　④カゴに入れる＆回収　　　　　　　　　
+        ⑤カゴ置く、石回収　　　　　　　　　⑥石を相手の陣に投げる　　　　　　　　　
+        ⑦ボール回収　　　　　　　　　⑧カゴに入れて移動　　　　　　　　　　
+        ⑨カゴ返却
+
+    </div>
+    <!-- タイマーエリア -->
+    <div class="timer" id="timer">
+        <div class="time" id="time"></div>
+        <div class="minute" id="minute">00</div>
+        <div class="second" id="second">:00</div>
+        <div class="milli" id="milli">:00</div>
+        <div class="timer-button" id="timer-button">START</div>
+    </div>
+    <div class="fight" id="fight">
+        潤くんがんばれ
+    </div>
+    <script>
+        const ws = new WebSocket("ws://172.20.10.3:8007/ws")
+
+        let rx, lx, ly, cross, circle, square, triangle, up, down,
+            minutes = 0, seconds = 0, millis = 0, interval = 0, count = 0;
+        let Send_Data = ""
+
+        const all = document.getElementById("all");
+
+        const timer = document.getElementById("timer");
+        const time = document.getElementById("time");
+        const timer_button = document.getElementById("timer-button");
+        const minute = document.getElementById("minute");
+        const second = document.getElementById("second");
+        const milli = document.getElementById("milli");
+
+        // 初期設定
+        function setup() {
+            all.style.backgroundColor = "rgb(0,0,0)";
+            // イベントリスナー追加
+            minute.addEventListener("touchstart", Timer_reset);
+            second.addEventListener("touchstart", Timer_reset);
+            milli.addEventListener("touchstart", Timer_reset);
+            timer_button.addEventListener("touchstart", Timer_button);
+        }
+
+        //タイマー
+        //タイマーリセット
+        function Timer_reset() {
+            clearInterval(interval);
+            minutes = 0;
+            seconds = 0;
+            millis = 0;
+            milli.innerHTML = ":00";
+            second.innerHTML = ":00";
+            minute.innerHTML = "00";
+        }
+
+        // タイマー開始、停止
+        function Timer_button() {
+            if (count % 2 === 0) {
+                interval = setInterval(updateTimer, 10);
+                timer_button.innerHTML = "STOP";
+            } else {
+                clearInterval(interval);
+                timer_button.innerHTML = "START";
+            }
+            count++;
+        }
+
+
+        // タイマー更新
+        function updateTimer() {
+            millis++;
+            if (millis === 100) {
+                seconds++;
+                millis = 0;
+            }
+            if (seconds === 60) {
+
+                minutes++;
+                seconds = 0;
+            }
+            milli.innerHTML = ":" + millis.toString().padStart(2, "0");
+            second.innerHTML = ":" + seconds.toString().padStart(2, "0");
+            minute.innerHTML = minutes.toString().padStart(2, "0");
+        }
+
+        function updateGamepadValues() {
+            var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
+            var gamepad = gamepads[0]; // 0番目のゲームパッドを取得
+
+            // ジョイスティックの値を取得
+            lx = gamepad.axes[0] * 100 + 100;
+            ly = gamepad.axes[1] * -100 + 100;
+            rx = gamepad.axes[2] * 100 + 100;
+
+            cross = gamepad.buttons[0].pressed ? 1 : 0;
+            circle = gamepad.buttons[1].pressed ? 1 : 0;
+            square = gamepad.buttons[2].pressed ? 1 : 0;
+            triangle = gamepad.buttons[3].pressed ? 1 : 0;
+            up = gamepad.buttons[12].pressed ? 1 : 0;
+            down = gamepad.buttons[13].pressed ? 1 : 0;
+
+
+            window.addEventListener("gamepadconnected", (event) => {
+                console.log("🎮 ゲームパッドが接続されました:", event.gamepad);
+            });
+
+            window.addEventListener("gamepaddisconnected", (event) => {
+                console.log("❌ ゲームパッドが切断されました:", event.gamepad);
+            });
+
+        }
+
+        //通信
+        setInterval(() => {
+            Send_Data = `${rx.toFixed(0)},${lx.toFixed(0)},${ly.toFixed(0)},${cross},${circle},${square},${triangle},${up},${down}`;
+            ws.send(Send_Data);
+        }, 0);
+
+        setInterval(updateGamepadValues, 0);
+       // 初期設定関数の呼び出し
+        setup();
+    </script>
+</body>
